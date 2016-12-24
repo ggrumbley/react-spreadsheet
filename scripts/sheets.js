@@ -8,6 +8,8 @@
         data: this.props.initialData,
         sortby: null,
         descending: false,
+        edit: null,
+        search: false,
       };
     },
     propTypes: {
@@ -36,6 +38,24 @@
         descending: descending,
       });
     },
+
+    _showEditor: function (e) {
+      this.setState({edit: {
+        row: parseInt(e.target.dataset.row, 10),
+        cell: e.target.cellIndex,
+      }});
+    },
+    _save: function (e) {
+      e.preventDefault();
+      var input = e.target.firstChild;
+      var data = this.state.data.slice();
+      data[this.state.edit.row][this.state.edit.cell] = input.value;
+      this.setState({
+        edit: null,
+        data: data,
+      });
+    },
+
     render: function () {
       return (
         React.DOM.table({className: 'pure-table pure-table-bordered'},
@@ -49,20 +69,35 @@
               }, this)
             )
           ),
-          React.DOM.tbody(null,
-            this.state.data.map(function (row, idx) {
+          React.DOM.tbody({onDoubleClick: this._showEditor},
+            this.state.data.map(function (row, rowidx) {
               return (
-                React.DOM.tr({key: idx},
+                React.DOM.tr({key: rowidx},
                   row.map(function (cell, idx) {
-                    return React.DOM.td({key: idx}, cell);
-                  })
+                    var content = cell;
+                    var edit = this.state.edit;
+                    if (edit && edit.row === rowidx && edit.cell === idx) {
+                      content = React.DOM.form({onSubmit: this._save},
+                        React.DOM.input({
+                          type: 'text',
+                          defaultValue: cell,
+                        })
+                      );
+                    }
+                    return React.DOM.td({
+                      key: idx,
+                      'data-row': rowidx
+                    }, content);
+                  }, this)
                 )
               );
-            })
+            }, this)
           )
         )
       );
     }
+
+
   });
 
   ReactDOM.render(
