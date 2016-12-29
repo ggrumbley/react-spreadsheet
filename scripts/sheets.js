@@ -36,8 +36,8 @@
     },
     _undo: function () {
       console.log('UNDO!');
-      this.setState(this._log[this._log.length - 1]);
       this._log.pop();
+      this.setState(this._log[this._log.length - 1]);
     },
     componentDidMount: function() {
        document.onkeydown = function(e) {
@@ -121,18 +121,44 @@
       });
       this._logSetState({data: searchdata});
     },
-
+    _download: function(format, ev) {
+       var contents = format === 'json'
+         ? JSON.stringify(this.state.data)
+         : this.state.data.reduce(function(result, row) {
+             return result
+               + row.reduce(function(rowresult, cell, idx) {
+                   return rowresult
+                     + '"'
+                     + cell.replace(/"/g, '""')
+                     + '"'
+                     + (idx < row.length - 1 ? ',' : '');
+                 }, '')
+               + "\n";
+           }, '');
+       var URL = window.URL || window.webkitURL;
+       var blob = new Blob([contents], {type: 'text/' + format});
+       ev.target.href = URL.createObjectURL(blob);
+       ev.target.download = 'data.' + format;
+     },
 
     _renderToolbar: function () {
-      return React.DOM.button(
-        {
+      return React.DOM.div({className: 'pure-g'},
+        React.DOM.button({
           onClick: this._toggleSearch,
-          className: 'toolbar',
-        },
-        'search'
-      )
+          className: 'pure-u-1-5 pure-button pure-button-primary',
+        }, 'search'),
+        React.DOM.a({
+          onClick: this._download.bind(this, 'json'),
+          href: 'data.json',
+          className: 'pure-u-1-5 pure-button pure-button-primary',
+        }, 'Export JSON'),
+        React.DOM.a({
+          onClick: this._download.bind(this, 'csv'),
+          href: 'data.csv',
+          className: 'pure-u-1-5 pure-button pure-button-primary',
+        }, 'Export CSV')
+      );
     },
-
     _renderSearch: function () {
       if (!this.state.search) {
         return null;
