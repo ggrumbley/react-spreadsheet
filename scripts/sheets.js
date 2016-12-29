@@ -3,15 +3,6 @@
 
   var Sheets = React.createClass({
     displayName: 'Sheets',
-    getInitialState: function () {
-      return {
-        data: this.props.initialData,
-        sortby: null,
-        descending: false,
-        edit: null,
-        search: false,
-      };
-    },
     propTypes: {
       headers: React.PropTypes.arrayOf(
         React.PropTypes.string
@@ -22,7 +13,52 @@
         )
       ),
     },
-
+    _log: [],
+    _logSetState: function (newState) {
+      this._log.push(JSON.parse(JSON.stringify(
+        this._log.length === 0 ? this.state : newState
+      )));
+      this.setState(newState);
+    },
+    _replay: function () {
+      if (this._log.length === 0) {
+        console.warn('No state to replay yet');
+        return;
+      }
+      var idx = -1;
+      var interval = setInterval(function () {
+        idx++;
+        if (idx === this._log.length - 1) {
+          clearInterval(interval);
+        }
+        this.setState(this._log[idx]);
+      }.bind(this), 1000);
+    },
+    _undo: function () {
+      console.log('UNDO!');
+      this.setState(this._log[this._log.length - 1]);
+      this._log.pop();
+    },
+    componentDidMount: function() {
+       document.onkeydown = function(e) {
+         if (e.altKey && e.shiftKey && e.keyCode === 82) {
+           this._replay();
+         } else if (e.ctrlKey && e.keyCode === 90) {
+           this._undo();
+         } else if (e.ctrlKey && e.keyCode === 89) {
+           console.log('REDO!');
+         }
+       }.bind(this);
+     },
+    getInitialState: function () {
+      return {
+        data: this.props.initialData,
+        sortby: null,
+        descending: false,
+        edit: null,
+        search: false,
+      };
+    },
     _sort: function (e) {
       var column = e.target.cellIndex;
       var data = this.state.data.slice();
@@ -32,7 +68,7 @@
           ? (a[column] < b[column] ? 1 : -1)
           : (a[column] > b[column] ? 1 : -1);
       });
-      this.setState({
+      this._logSetState({
         data: data,
         sortby: column,
         descending: descending,
@@ -40,7 +76,7 @@
     },
 
     _showEditor: function (e) {
-      this.setState({edit: {
+      this._logSetState({edit: {
         row: parseInt(e.target.dataset.row, 10),
         cell: e.target.cellIndex,
       }});
@@ -50,13 +86,72 @@
       var input = e.target.firstChild;
       var data = this.state.data.slice();
       data[this.state.edit.row][this.state.edit.cell] = input.value;
-      this.setState({
+      this._logSetState({
         edit: null,
         data: data,
       });
     },
 
-    render: function () {
+    _preSearchData: null,
+
+    _toggleSearch: function () {
+      if (this.state.search) {
+        this._logSetState({
+          data: this._preSearchData,
+          search: false,
+        });
+        this._preSearchData = null;
+      } else {
+        this._preSearchData = this.state.data;
+        this._logSetState({
+          search: true,
+        });
+      }
+    },
+
+    _search: function (e) {
+      var needle = e.target.value.toLowerCase();
+      if (!needle) {
+        this._logSetState({data: this._preSearchData});
+        return;
+      }
+      var idx = e.target.dataset.idx;
+      var searchdata = this._preSearchData.filter(function (row) {
+        return row[idx].toString().toLowerCase().indexOf(needle) > -1;
+      });
+      this._logSetState({data: searchdata});
+    },
+
+
+    _renderToolbar: function () {
+      return React.DOM.button(
+        {
+          onClick: this._toggleSearch,
+          className: 'toolbar',
+        },
+        'search'
+      )
+    },
+
+    _renderSearch: function () {
+      if (!this.state.search) {
+        return null;
+      }
+      return (
+        React.DOM.tr({onChange: this._search},
+          this.props.headers.map(function (_ignore, idx) {
+            return React.DOM.td({key: idx},
+              React.DOM.input({
+                type: 'text',
+                'data-idx': idx,
+              })
+            );
+          })
+        )
+      );
+    },
+
+    _renderTable: function () {
       return (
         React.DOM.table({className: 'pure-table pure-table-bordered'},
           React.DOM.thead({onClick: this._sort},
@@ -70,6 +165,7 @@
             )
           ),
           React.DOM.tbody({onDoubleClick: this._showEditor},
+            this._renderSearch(),
             this.state.data.map(function (row, rowidx) {
               return (
                 React.DOM.tr({key: rowidx},
@@ -95,8 +191,16 @@
           )
         )
       );
-    }
+    },
 
+    render: function () {
+      return (
+        React.DOM.div(null,
+          this._renderToolbar(),
+          this._renderTable()
+        )
+      );
+    },
 
   });
 
