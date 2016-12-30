@@ -142,20 +142,26 @@
      },
 
     _renderToolbar: function () {
-      return React.DOM.div({className: 'pure-g'},
+      var btnStyle = {
+        margin: '15px'
+      };
+      return React.DOM.div(null,
         React.DOM.button({
           onClick: this._toggleSearch,
-          className: 'pure-u-1-5 pure-button pure-button-primary',
-        }, 'search'),
+          className: 'pure-button pure-button-primary',
+          style: btnStyle
+        }, 'Search'),
         React.DOM.a({
           onClick: this._download.bind(this, 'json'),
           href: 'data.json',
-          className: 'pure-u-1-5 pure-button pure-button-primary',
+          className: 'pure-button pure-button-primary',
+          style: btnStyle
         }, 'Export JSON'),
         React.DOM.a({
           onClick: this._download.bind(this, 'csv'),
           href: 'data.csv',
-          className: 'pure-u-1-5 pure-button pure-button-primary',
+          className: 'pure-button pure-button-primary',
+          style: btnStyle
         }, 'Export CSV')
       );
     },
